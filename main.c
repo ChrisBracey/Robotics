@@ -88,14 +88,14 @@ int main(void)
 
 		if ((color - count) > 0) { 
 			color -= count;
-			changeColor(&serial);
+			activateLED(&serial, UserButton);
 		} else { 
 			if (color > 0) {
 				color = 0;
-				changeColor(&serial);
+				activateLED(&serial, UserButton);
 			} else { // color = 0
 				color = 255;
-				changeColor(&serial);
+				activateLED(&serial, UserButton);
 			}
 		}
 		
