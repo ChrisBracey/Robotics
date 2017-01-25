@@ -30,15 +30,7 @@ unsigned char bump(Serial* serial)
     return c;
 };
 
-void changeColor(Serial* serial)
-{
-    serialSend(serial, CmdLeds);
-    serialSend(serial, UserButton); //Center Button LED
-    serialSend(serial, color); //Sets color
-    serialSend(serial, 255);
-};
-
-void activateLED(Serial* serial, byte LED)
+void LED(Serial* serial, byte LED)
 {
     serialSend(serial, CmdLeds);
     serialSend(serial, LED);
@@ -52,50 +44,43 @@ int main(void)
     byte b = 0;
     
     Serial serial;
-    init(&serial, 132); //full mode
+    init(&serial, CmdFull); // Full Mode
     
     // display initial color
-    changeColor(&serial);
+    LED(&serial, UserButton);
 
     while (true)
     {
-   	 
-		int loopCount = 0;
+		time_t start = time(NULL); // Gets current Time
 		
-		time_t start = time(NULL);
+		while ((time(NULL) - start) < 1) { // Do for the current second
+		    
+		    b = bump(&serial); // Gets bump value
 		
-		
-		while ((time(NULL) - start) < 1) {
-		
-		b = bump(&serial);
-		
-		if (b != 0) {
-			if (b == 3) {
-				activateLED(&serial, 9);
-			}
-			else {
-				if (b == 2) {
-					activateLED(&serial, 8); // check robot led
-				}
-				if (b == 1) {
-					activateLED(&serial, 1); // debris led
-				}
-			}
-
-		}
-		usleep(100000);
+		    if (b != 0) { // If a bumper was bumped
+			    if (b == 3) { // If bumped in middle
+				    LED(&serial, 9); // Check Robot and Debris
+			    }
+			    if (b == 2) { // If bumped on right
+				    LED(&serial, 8); // check robot led
+			    }
+			    if (b == 1) { // If bumped on left
+				    LED(&serial, 1); // debris led
+                }
+		    }
+		    usleep(100000); // Sleep for 1/10 of a second
 		}
 
-		if ((color - count) > 0) { 
-			color -= count;
-			activateLED(&serial, UserButton);
+		if ((color - count) > 0) {
+			color -= count; //Decrement color but 16
+		    LED(&serial, UserButton); // Change LED Color
 		} else { 
-			if (color > 0) {
+			if (color > 0) { // if color == 15
 				color = 0;
-				activateLED(&serial, UserButton);
-			} else { // color = 0
-				color = 255;
-				activateLED(&serial, UserButton);
+				LED(&serial, UserButton);
+			} else { // Resets color back to red after it hits green
+                color = 255;
+				LED(&serial, UserButton);
 			}
 		}
 		
