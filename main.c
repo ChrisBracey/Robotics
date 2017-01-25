@@ -5,8 +5,8 @@
 #include "serial.h"
 
 enum bool {false, true};
-typedef unsigned char byte;
-unsigned char color = 255;
+typedef unsigned char byte; //Makes byte = unsigned char
+byte color = 255; //global variable for color
 
 void init(Serial* serial, byte state)
 {
@@ -22,7 +22,7 @@ void init(Serial* serial, byte state)
 
 unsigned char bump(Serial* serial)
 {
-    unsigned char c = 0;
+    byte c = 0;
     serialSend(serial, CmdSensors);
     serialSend(serial, 7); //bumps and wheel drops
     serialGetChar(serial, &c);
@@ -33,12 +33,12 @@ unsigned char bump(Serial* serial)
 void changeColor(Serial* serial)
 {
     serialSend(serial, CmdLeds);
-    serialSend(serial, UserButton);
-    serialSend(serial, color);
+    serialSend(serial, UserButton); //Center Button LED
+    serialSend(serial, color); //Sets color
     serialSend(serial, 255);
 };
 
-void activateLED(Serial* serial, unsigned char LED)
+void activateLED(Serial* serial, byte LED)
 {
     serialSend(serial, CmdLeds);
     serialSend(serial, LED);
@@ -48,9 +48,8 @@ void activateLED(Serial* serial, unsigned char LED)
 
 int main(void)
 {
-    unsigned char count = 16;
-    
-    unsigned char b = 0;
+    byte count = 16;
+    byte b = 0;
     
     Serial serial;
     init(&serial, 132); //full mode
@@ -85,12 +84,12 @@ int main(void)
 
 		}
 		usleep(100000);
-		}// end while(loopCount)
+		}
 
-		if ((color - count) > 0) { // this works up to count - 1
+		if ((color - count) > 0) { 
 			color -= count;
 			changeColor(&serial);
-		} else { // finishes off remaining iteration
+		} else { 
 			if (color > 0) {
 				color = 0;
 				changeColor(&serial);
