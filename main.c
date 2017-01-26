@@ -61,10 +61,10 @@ int main(void)
 			    if (b == 3) { // If bumped in middle
 				    LED(&serial, 9); // Check Robot and Debris
 			    }
-			    if (b == 2) { // If bumped on right
+			    if (b == 2) { // If bumped on left 
 				    LED(&serial, 8); // check robot led
 			    }
-			    if (b == 1) { // If bumped on left
+			    if (b == 1) { // If bumped on right
 				    LED(&serial, 1); // debris led
                 }
 		    }
