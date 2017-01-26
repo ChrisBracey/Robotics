@@ -40,7 +40,7 @@ void LED(Serial* serial, byte LED)
 
 int main(void)
 {
-    byte count = 16;
+    byte decrease = 16;
     byte b = 0;
     
     Serial serial;
@@ -71,8 +71,8 @@ int main(void)
 		    usleep(100000); // Sleep for 1/10 of a second
 		}
 
-		if ((color - count) > 0) {
-			color -= count; //Decrement color but 16
+		if ((color - decrease) > 0) {
+			color -= decrease; //Decrement color but 16
 		    LED(&serial, UserButton); // Change LED Color
 		} else { 
 			if (color > 0) { // if color == 15
