@@ -1,64 +1,129 @@
+
+#include <stdlib.h>
 #include <stdio.h>
+#include <termios.h>
 #include <unistd.h>
-#include <time.h>
+
 #include "oi.h"
 #include "serial.h"
 
 enum bool {false, true};
-typedef unsigned char byte; //Makes byte = unsigned char
-byte color = 255; //global variable for color
+typedef unsigned char byte;
 
-void init(Serial* serial, byte state)
+Serial* serial;
+inline void send_byte(byte b)
 {
-    serialClose(serial);
-    serialOpen(serial, "/dev/ttyUSB0", B115200, true);
-    serialSend(serial, 128);    // Send Start
-    serialSend(serial, state);    // Send state
+	serialSend(serial, b);
+};
+inline byte get_byte()
+{
+	byte c;
 
-    byte b;
-    while( serialNumBytesWaiting(serial) > 0 )
-   	 serialGetChar(serial, &b);
+	               // From Roomba Open Interface (OI) Specification
+	usleep(15000); // wait 15ms to read
+
+	// if there is no waiting byte, wait
+	while ( serialNumBytesWaiting(serial) == 0 )
+		usleep(15000);
+
+	serialGetChar(serial, &c);
+	return c;
 };
 
-unsigned char bump(Serial* serial)
+void start(byte state)
 {
-    byte c = 0;
-    serialSend(serial, CmdSensors);
-    serialSend(serial, 7); //bumps and wheel drops
-    serialGetChar(serial, &c);
-    c &= 3; //discards wheel drops
-    return c;
+	// allocate memory for Serial struct
+	serial = (Serial*)malloc(sizeof(Serial));
+
+	// ensure serial is closed from any previous execution
+	serialClose(serial);
+
+	// constant B115200 comes from termios.h
+	serialOpen(serial, "/dev/ttyUSB0", B115200, false);
+	send_byte( CmdStart );	// Send Start 
+	send_byte( state );	// Send state
+
+	// turn off any motors
+	send_byte( CmdMotors );
+	send_byte( 0 );
+	send_byte( 0 );
+	send_byte( 0 );
+
+	// clear out any bites from previous runs
+	while( serialNumBytesWaiting(serial) > 0 )
+		get_byte();
 };
 
-unsigned char lightBump(Serial* serial)
+/*
+ * stops for 15ms
+ */
+unsigned char get_bump()
 {
-    byte c = 0;
-    serialSend(serial, CmdSensors);
-    serialSend(serial, 46);
-    serialGetChar(serial, &c);
-    int w = c;
-    w= w << 8;
-    byte d = 0;
-    serialSend(serial, CmdSensors);
-    serialSend(serial, 46);
-    serialGetChar(serial, &d);
-    w+=d;
-    return w;
-}
+	send_byte( CmdSensors );
+	send_byte( SenBumpDrop ); //bumps and wheel drops
 
-int main(void)
+	return get_byte() & BmpBoth; //discard wheel drops
+};
+
+/*
+ * stops for 15ms
+ */
+unsigned char get_button()
 {
-    byte b = 0;
-    
-    Serial serial;
-    init(&serial, CmdFull); // Full Mode
-    
-    while (true)
-    {
-	    printf("\n\nLight Bump: %d\n\n", lightBump(&serial));
-        usleep(1000000);
-    }
-    
-    return 0;
+	send_byte( CmdSensors );
+	send_byte( SenButton );
+
+	return get_byte();
+};
+
+void set_led(byte ledBits, byte pwrLedColor)
+{
+	send_byte( CmdLeds );
+	send_byte( ledBits );
+	send_byte( pwrLedColor );
+	send_byte( 255 ); // set intensity high
+};
+
+int main(int args, char** argv)
+{
+	int i, j; // for indices
+	byte bmp = 0, btn = 0, pwrLed = 255, bmpLed = 0;
+
+	start(CmdFull); //full mode
+	do
+	{
+		for (i=15; i>-1; --i)
+		{
+			set_led(bmpLed, pwrLed);
+
+			for ( j=0; j<10; ++j )
+			{
+				bmp = get_bump(); // halts 15ms
+				// map left bump (1 bit) to left LED (3 bit)
+				bmpLed = (bmp & BmpLeft) << 2;
+				// map right bump (0 bit) to right LED (0 bit)
+				bmpLed |= bmp & BmpRight;
+
+				set_led(bmpLed, pwrLed);
+
+				btn = get_button(); // halts 15ms
+				if ( btn )
+					break;
+				
+				// Wait 0.1s = 100ms = 100,000us = 2(15,000)us + 70,000us,
+				// where us is a microsecond
+				usleep(70000);
+			}
+			if ( btn )
+				break;
+
+			pwrLed = 17*i;
+		}
+		pwrLed = 0;
+	}
+	while (!btn);
+
+	send_byte(CmdPwrDwn);
+	return 0;
 }
 
